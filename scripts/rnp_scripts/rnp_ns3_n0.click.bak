@@ -1,0 +1,247 @@
+
+
+AddressInfo(me0	172.16.0.1/16	00:00:00:00:00:01);
+
+/*****************************************************************************************
+*
+*  HERE, DEFINE USER ELEMENTS
+*
+******************************************************************************************/
+
+
+/**
+* forward packets to the network
+*/
+elementclass OutputEth0
+{
+	input[0]
+		-> paint :: PaintSwitch;
+	paint[0] 
+		-> q :: Queue(2000);
+	paint[2] 
+//		-> ToSimDump("s", MESSAGE_TYPE RREP) 
+		-> q;
+	paint[3] 
+		-> DecIPTTL 
+//		-> ToSimDump("s", MESSAGE_TYPE raw) 
+		-> q;
+	paint[1]
+		-> DecIPTTL 
+//		-> ToSimDump("f", MESSAGE_TYPE raw) 
+		-> q;
+	q
+//		-> ToDump("toeth0.dump",PER_NODE true)
+		-> ToSimDevice(eth0);
+}
+
+
+/**
+*	get data from network and drop data for other ethernet addresses
+*/
+elementclass InputEth0{
+	$myaddr_ethernet |
+	fromSim :: FromSimDevice(eth0,SNAPLEN 4096);
+
+	fromSim[0]
+		-> ToDump("input.dump",PER_NODE true)
+		-> HostEtherFilter($myaddr_ethernet, DROP_OWN false, DROP_OTHER true)
+		//-> ToDump("inputnahostetherfilter.dump",PER_NODE true)
+		-> [0]output;
+
+}
+
+
+/**
+*	get IP data from system and forward to router
+*/
+elementclass InputSystem 
+{
+	fromSim :: FromSimDevice(tap0,SNAPLEN 4096);
+
+	fromSim[0]
+		-> CheckIPHeader2
+		-> MarkIPHeader
+		/*-> ToSimDump("r", MESSAGE_TYPE raw)*/
+		-> ToDump("ipfromtun.dump",PER_NODE true, ENCAP IP)
+		-> Print("From system n0",TIMESTAMP true)
+		-> [0]output;
+
+	fromSim[1]
+//		-> SetTimestamp
+//		-> Print("checking IP",TIMESTAMP true)
+		-> CheckIPHeader2
+		-> MarkIPHeader
+		-> [1]output;
+}
+
+
+/**
+* forward packets to the system
+*/
+elementclass OutputSystem
+{
+	input[0]
+		-> Queue(2000)
+		-> CheckIPHeader2
+		//-> ToDump("iptotun.dump",PER_NODE true, ENCAP IP)
+		-> ToSimDevice(tap0);
+}
+
+
+/**
+* Classify ARP and others
+* input[0] from network
+* output[0] to network (ARP responses from me)
+* output[1] to IP data processor
+* output[2] to ARP querier (ARP responses from others)
+*/
+elementclass ClassifyARP
+{
+	$myaddr, $myaddr_ethernet |
+	
+	// classifier output 0: ARP requests, output 1: ARP replies, output 2: rest
+	input[0] 
+		-> arpclass :: Classifier(12/0806 20/0001, 12/0806 20/0002, -);
+	
+	// reply for requests (and output our response to the network, if we know the answer...)
+	arpclass[0] 
+		-> ARPResponder($myaddr, $myaddr_ethernet)
+//		-> SetTimestamp
+//		-> Print("ARP REPLY n0",TIMESTAMP true)
+		-> [0]output;
+		
+	// this is a response from others - pass it to ARP querier
+	arpclass[1] 
+		-> [2]output
+	
+	// this is not an ARP packet - pass it to normal IP packets processing
+	arpclass[2] 
+		-> MarkMACHeader
+		-> CheckIPHeader2(OFFSET 14)
+		-> MarkIPHeader(14)
+		//-> ToDump("ipdata",PER_NODE true)
+		-> [1]output;
+}
+
+
+
+/**
+* Filter out data for localhost, the other data we are supposed to forward go to route lookup
+* input: data packets
+* output[0]: packets not destined for localhost
+* output[1]: packets destined for localhost (to be handled to the upper layers)
+*/ 
+elementclass FilterLocalhost
+{
+	$myaddr |
+	input
+		-> localhost :: IPClassifier(dst host $myaddr or dst host 172.16.255.255  ,- );
+	localhost[0] 
+		-> StripToNetworkHeader
+		-> [1]output;
+	localhost[1] 
+		-> [0]output;
+}
+
+
+
+/*****************************************************************************************
+*
+*
+*  HERE, CREATE ALL REQUIRED ELEMENTS
+*
+*
+******************************************************************************************/
+
+randomseed::RandomSeed(111);
+
+inputEthSim :: InputEth0(me0);
+inputSystem :: InputSystem;
+output :: OutputEth0;
+arpclass :: ClassifyARP(me0,me0);
+arpquerier :: ARPQuerier(me0,POLL_TIMEOUT 0);	// We do not want polling here...
+outputsystem :: OutputSystem;
+filterlocalhost :: FilterLocalhost(me0);
+/*filtersink :: FilterLocalhost(me0);*/
+lookup :: RNPLookUpRoute(me0);
+sink :: SetIPAddress(me0); // captures packets when node is sink
+
+avgCounter :: AverageCounter;
+//avgCounterIN :: AverageCounter;
+
+/*****************************************************************************************
+*
+*
+*  HERE, DEFINE THE CLICK GRAPH STRUCTURE
+*
+*
+******************************************************************************************/
+
+
+
+inputEthSim
+	-> arpclass;
+
+arpclass[0] 
+	//-> ToDump("arpreply.dump",PER_NODE true)
+	-> output;
+arpclass[1]
+	-> SetTimestamp
+//	-> ToSimDump("r", MESSAGE_TYPE raw)
+	-> filterlocalhost;
+arpclass[2]
+	-> [1]arpquerier;
+
+// Packets with known MAC address of the destination
+arpquerier[0]
+	//-> ToDump("arpoutput.dump",PER_NODE true)
+	-> avgCounter
+	-> output;
+
+// ARP Queries
+arpquerier[1]
+	//-> ToDump("arpoutput.dump",PER_NODE true)
+	//-> avgCounter // do not count queries
+	-> output;
+
+filterlocalhost[0]
+	-> Paint(1) // mark packets to be forwarded
+	-> lookup;	// TODO: support routing, man !!!! ;-)
+
+filterlocalhost[1]
+	-> outputsystem;
+
+inputSystem[0] 
+	-> Paint(3)
+	-> lookup;
+
+inputSystem[1]
+	//-> ahnclassifier :: ClassifyIP;
+	-> Discard;
+
+lookup[0] // known destination, dest IP annotation set
+	-> StripToNetworkHeader
+	-> ToDump("lookedup.dump",PER_NODE true, ENCAP IP)
+	-> Print("Lookup 0",TIMESTAMP true)
+	//-> avgCounterIN
+	-> [0]arpquerier; 
+lookup[1] // unknown destination, routediscovery
+	//-> discoveryqueue;
+	-> ToDump("lookfailed.dump",PER_NODE true, ENCAP IP)
+	-> Print("Lookup 1",TIMESTAMP true)
+	-> Discard;
+lookup[2] // im sink, receive
+	-> StripToNetworkHeader
+	-> ToDump("sinked.dump",PER_NODE true, ENCAP IP)
+	-> sink
+	-> Print("Lookup 2",TIMESTAMP true)
+	-> outputsystem;
+	
+// It is mandatory to use an IPRouteTable element with ns-3-click
+// (but we do not use it in this example)
+rt :: LinearIPLookup (172.16.0.0/16 0.0.0.0 1);
+// We are actually not using the routing table
+Idle () -> rt;
+rt[0] -> Discard;
+rt[1] -> Discard;
+
