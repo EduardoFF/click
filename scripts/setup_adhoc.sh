@@ -64,7 +64,7 @@ then
     iw dev ${INTERFACE} interface add fish1 type monitor flags none
     ifconfig fish1 up
 else
-    echo "dummy fish still not enabled - does not work in odroid"
+#    echo "dummy fish still not enabled - does not work in odroid"
 #    modprobe dummy
 #    ip link set name fish1 dev dummy0
 #    ifconfig fish1 up
