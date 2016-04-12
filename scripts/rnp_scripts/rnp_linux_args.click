@@ -240,7 +240,7 @@ lookup[0] // known destination, dest IP annotation set
 	// just in case, strip network header
 	-> StripToNetworkHeader
 	-> SetIPChecksum
-	-> SetUDPChecksum
+//	-> SetUDPChecksum
 //	-> ToDump("lookedup_to_ipout.dump",ENCAP IP)
 //	-> Print("Lookup 0",TIMESTAMP true)
 	-> DecIPTTL
@@ -263,7 +263,7 @@ lookup[1] // unknown destination, routediscovery
 
 lookup[2] // im sink, receive
 	-> StripToNetworkHeader
-	-> StoreIPAddress(me0,dst)
+//	-> StoreIPAddress(me0,dst)
 //	-> ToDump("before_sink.dump",ENCAP IP)
 	-> sink;
 
@@ -274,10 +274,10 @@ lookup[3] // discarded packet
 
 /// succesful sinks
 sink[0]
-	-> SetIPChecksum
-	-> SetUDPChecksum
+//	-> SetIPChecksum
+//	-> SetUDPChecksum
 	-> ToDump("sinked.dump",ENCAP IP, SNAPLEN 52)
-	-> Print("Sinked",TIMESTAMP true)
+//	-> Print("Sinked",TIMESTAMP true)
 //	-> Discard;
 	-> sinkflowmon
 	-> system;
