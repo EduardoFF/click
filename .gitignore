@@ -24,3 +24,6 @@ share/click/pkg-config.mk
 stamp-egroup
 stamp-h
 *~
+
+userlevel/*.cc
+userlevel/*.mk

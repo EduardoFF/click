@@ -154,7 +154,7 @@ system :: System;
 output :: OutputEth0;
 lookup :: RNPLookUpRoute(me0);
 sink :: RNPSink(me0); // captures packets when node is sink
-ctrl :: ControlSocket(unix,/tmp/clicksocket);
+//ctrl :: ControlSocket(unix,/tmp/clicksocket);
 chat :: ChatterSocket("TCP",12345);
 ipopt :: IPGWOptions(me0);
 oflowmon :: FlowMonitor(ADDR me0, ETHERADDR me0, LCMCHAN oflow, DO_IP true, DO_ETH false);
