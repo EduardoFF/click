@@ -64,19 +64,19 @@ elementclass OutputEth0 {
 elementclass InputEth0 {
 	$myaddr_ethernet |
 	FromDevice($WLANINTERFACE, PROMISC true, SNIFFER false, METHOD LINUX)
-		//-> Print("From device $WLANINTERFACE",MAXLENGTH 43)
+//		//-> Print("From device $WLANINTERFACE",MAXLENGTH 43)
 //		-> ToDump("input_eth0.dump", ENCAP ETHER, SNAPLEN 102)
 		-> ftx::FilterTX;
 	ftx[0]
 		-> hostfilter :: HostEtherFilter($myaddr_ethernet, DROP_OWN false, DROP_OTHER true);
 //		-> hostfilter :: HostEtherFilter(64:05:04:03:02:01, DROP_OWN false, DROP_OTHER true);
 	hostfilter[0]
-		-> ToDump("eth0_in_0.dump", ENCAP ETHER, SNAPLEN 102)
-		-> Print("pkt4me")
+//		-> ToDump("eth0_in_0.dump", ENCAP ETHER, SNAPLEN 102)
+//		-> Print("pkt4me")
 		-> [0]output;
 	hostfilter[1]
-		-> ToDump("eth0_in_1.dump", ENCAP ETHER, SNAPLEN 102)
-		-> Print("not for me")
+//		-> ToDump("eth0_in_1.dump", ENCAP ETHER, SNAPLEN 102)
+//		-> Print("not for me")
 		-> [1]output;
 	ftx[1]
 		-> ExtraDecap	
@@ -107,7 +107,7 @@ elementclass System {
 	multicast_cl[1]
 //		-> ToDump("fromsystem_ip.dump", ENCAP ETHER)
    		-> Strip(14)
-		-> ToDump("my_ip.dump", ENCAP IP, SNAPLEN 52)
+//		-> ToDump("my_ip.dump", ENCAP IP, SNAPLEN 52)
 		-> CheckIPHeader
 		-> MarkIPHeader
 		-> [0]output;
@@ -257,7 +257,7 @@ ipopt[1]
 
 lookup[1] // unknown destination, routediscovery
 	//-> discoveryqueue;
-	-> ToDump("lookfailed.dump",ENCAP IP, SNAPLEN 52)
+//	-> ToDump("lookfailed.dump",ENCAP IP, SNAPLEN 52)
 //	-> Print("Lookup 1",TIMESTAMP true)
 	-> Discard;
 
@@ -276,7 +276,7 @@ lookup[3] // discarded packet
 sink[0]
 //	-> SetIPChecksum
 //	-> SetUDPChecksum
-	-> ToDump("sinked.dump",ENCAP IP, SNAPLEN 52)
+//	-> ToDump("sinked.dump",ENCAP IP, SNAPLEN 52)
 //	-> Print("Sinked",TIMESTAMP true)
 //	-> Discard;
 	-> sinkflowmon
