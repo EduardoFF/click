@@ -250,8 +250,8 @@ elementclass System {
 /*****   GENERAL  ******/
 randomseed::RandomSeed(111);
 system :: System;
-ctrl :: ControlSocket(unix,/tmp/clicksocket);
-chat :: ChatterSocket("TCP",12345);
+//ctrl :: ControlSocket(unix,/tmp/clicksocket);
+//chat :: ChatterSocket("TCP",12345);
 
 
 /*****   ETH0  ******/
