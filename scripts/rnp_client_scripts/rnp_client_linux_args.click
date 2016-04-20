@@ -1,5 +1,5 @@
 // Classic RNP for linux
-AddressInfo(me0	$ETHIP $ETHMAC);
+AddressInfo(me0	${ETHIP} ${ETHMAC});
 AddressInfo(me1	192.168.168.2/24 00:00:00:00:00:00);
 AddressInfo(adhocnet ${ADHOCIP} ${WLANMAC});
 
@@ -21,10 +21,9 @@ elementclass OutputWlan1 {
   input[0]
     -> q :: Queue(1000)
     /// write headers  (extended ip_header -> 56 bytes)
-    /// ethernet 14 + 20 (IP) + 8 (UDP)  
-    //-> ToDump("out_wlan1.dump", ENCAP ETHER, SNAPLEN 42)
-//    -> Print("To Wlan1",MAXLENGTH 43)
-    -> ToDevice(wlan1, METHOD LINUX);
+    /// ethernet 14 + 20 (IP) + 8 (UDP) 
+ //   -> ToDump("out_wlan.dump", ENCAP ETHER, SNAPLEN 102)
+    -> ToDevice(${WLANINTERFACE}, METHOD LINUX);
 }
 
 
@@ -37,24 +36,20 @@ elementclass OutputWlan1 {
 //      set SNIFFER False to prevent linux from handling broadcasts
 elementclass InputWlan1 {
 	$myaddr_ethernet |
-	FromDevice(wlan1, PROMISC false, SNIFFER false, METHOD LINUX)
-		//-> Print("From device wlan1",MAXLENGTH 43)
-		//-> ToDump("input_wlan1.dump", ENCAP ETHER, SNAPLEN 48)
+	FromDevice(${WLANINTERFACE}, PROMISC false, SNIFFER false, METHOD LINUX)
 		-> ftx::FilterTX;
 	ftx[0]
 		-> hostfilter :: HostEtherFilter($myaddr_ethernet, DROP_OWN false, DROP_OTHER true);
-//		-> hostfilter :: HostEtherFilter(64:05:04:03:02:01, DROP_OWN false, DROP_OTHER true);
 	hostfilter[0]
-//		-> ToDump("eth0_in_0.dump", ENCAP ETHER, SNAPLEN 102)
+//		-> ToDump("wlan_in_0.dump", ENCAP ETHER, SNAPLEN 102)
 //		-> Print("pkt4me")
 		-> [0]output;
 	hostfilter[1]
-//		-> ToDump("eth0_in_1.dump", ENCAP ETHER, SNAPLEN 102)
+//		-> ToDump("wlan_in_1.dump", ENCAP ETHER, SNAPLEN 102)
 //		-> Print("not for me")
 		-> [1]output;
 	ftx[1]
 		-> ExtraDecap	
-		//-> Print("TX FEEDBACK device wlan1")
 		-> [2]output;
 }
 
@@ -70,7 +65,7 @@ elementclass InputWlan1 {
 elementclass OutputEth0 {
   input[0]
     -> q :: Queue(2000)
-    -> ToDevice(eth0, METHOD LINUX);
+    -> ToDevice(${ETHINTERFACE}, METHOD LINUX);
 }
 
 // packets coming from the network, 
@@ -81,9 +76,7 @@ elementclass OutputEth0 {
 //	output[2] TX feedback packets
 elementclass InputEth0 {
 	$myaddr_ethernet |
-	FromDevice(eth0, PROMISC false, SNIFFER true, METHOD LINUX)
-	        //-> Print("From device eth0",MAXLENGTH 43)
-//		-> ToDump("input_eth0.dump", ENCAP ETHER, SNAPLEN 48)
+	FromDevice(${ETHINTERFACE}, PROMISC false, SNIFFER true, METHOD LINUX)
 		-> ftx::FilterTX;
 	ftx[0]
 		-> cl :: Classifier(12/0806, 12/0800);
@@ -109,7 +102,6 @@ elementclass InputEth0 {
 //		-> Print("not for me")
 		-> [2]output;
 	ftx[1]
-		//-> Print("TX FEEDBACK device wlan1")
 		-> [3]output;
 }
 
@@ -418,7 +410,6 @@ arpclass[2]
 
 // Packets with known MAC address of the destination
 arpquerier[0]
-//	-> ToDump("arp_ok+wlan1.dump", ENCAP ETHER, SNAPLEN 48)
 	-> oflowmon
 	-> outputWlan;
 
@@ -435,7 +426,6 @@ arpquerier[1]
 /// which should not happen here
 inputWlan[1]
 //	-> Print("Not mine")
-//	-> ToDump("unicast_wlan1_ignored.dump", ENCAP ETHER, SNAPLEN 48)
 	-> Discard;
 
 /// TX feedbacks are not handled at the moment
@@ -449,7 +439,7 @@ lookup[0] // known destination, dest IP annotation set
 	// just in case, strip network header
 	-> StripToNetworkHeader
 	-> SetIPChecksum
-	-> SetUDPChecksum
+//	-> SetUDPChecksum
 //	-> ToDump("lookok.dump",ENCAP IP, SNAPLEN 28)
 //	-> Print("Lookup 0",TIMESTAMP true)
 	-> DecIPTTL
@@ -491,7 +481,7 @@ sink[0]
 	-> SetIPAddress(me1)
 //	-> ToDump("sinked_to_eth.dump",ENCAP IP, SNAPLEN 28)	
 	-> SetIPChecksum
-	-> SetUDPChecksum
+//	-> SetUDPChecksum
 	/// going to ARP of Eth first
 	-> arpquerierEth;	
 
