@@ -41,11 +41,11 @@ elementclass InputWlan1 {
 	ftx[0]
 		-> hostfilter :: HostEtherFilter($myaddr_ethernet, DROP_OWN false, DROP_OTHER true);
 	hostfilter[0]
-//		-> ToDump("wlan_in_0.dump", ENCAP ETHER, SNAPLEN 102)
+		-> ToDump("wlan_in_0.dump", ENCAP ETHER, SNAPLEN 102)
 //		-> Print("pkt4me")
 		-> [0]output;
 	hostfilter[1]
-//		-> ToDump("wlan_in_1.dump", ENCAP ETHER, SNAPLEN 102)
+		-> ToDump("wlan_in_1.dump", ENCAP ETHER, SNAPLEN 102)
 //		-> Print("not for me")
 		-> [1]output;
 	ftx[1]
@@ -65,6 +65,7 @@ elementclass InputWlan1 {
 elementclass OutputEth0 {
   input[0]
     -> q :: Queue(2000)
+    -> ToDump("out_eth.dump", ENCAP ETHER, SNAPLEN 102)	
     -> ToDevice(${ETHINTERFACE}, METHOD LINUX);
 }
 
@@ -160,7 +161,16 @@ elementclass TcpOrUdp {
 		-> Discard;
 }
 
-
+elementclass FixIPChecksums {
+      // fix the IP checksum, and any embedded checksums that
+      // include data from the IP header (TCP and UDP in particular)
+      input -> SetIPChecksum
+	  -> ipc :: IPClassifier(tcp, udp, -)
+	  -> SetTCPChecksum
+	  -> output;
+      ipc[1] -> SetUDPChecksum -> output;
+      ipc[2] -> output
+  }
 
 
 /**
@@ -359,7 +369,8 @@ filterlocalnetEth[0]
 	-> appflowmon
 	-> ToDump("bridged_from_eth0.dump", ENCAP IP, SNAPLEN 28)
 	-> StoreIPAddress(adhocnet,src)
-	-> SetIPChecksum
+	-> FixIPChecksums
+//	-> SetIPChecksum
 	-> lookup;
 
 filterlocalnetEth[1]
@@ -460,7 +471,7 @@ lookup[1] // unknown destination, routediscovery
 
 lookup[2] // im sink, receive
 	-> StripToNetworkHeader
-	-> StoreIPAddress(adhocnet,dst)
+//	-> StoreIPAddress(adhocnet,dst)
 	-> ToDump("before_sink.dump",ENCAP IP, SNAPLEN 28)
 	-> sink;
 
@@ -479,8 +490,9 @@ sink[0]
 	-> sinkflowmon
 	-> StoreIPAddress(me1,dst)
 	-> SetIPAddress(me1)
-	-> ToDump("sinked_to_eth.dump",ENCAP IP, SNAPLEN 28)	
-	-> SetIPChecksum
+	-> ToDump("sinked_to_eth.dump",ENCAP IP, SNAPLEN 28)
+	-> FixIPChecksums
+//	-> SetIPChecksum
 //	-> SetUDPChecksum
 	/// going to ARP of Eth first
 	-> arpquerierEth;	
