@@ -64,18 +64,17 @@ elementclass OutputEth0 {
 elementclass InputEth0 {
 	$myaddr_ethernet |
 	FromDevice($WLANINTERFACE, PROMISC true, SNIFFER false, METHOD LINUX)
-//		//-> Print("From device $WLANINTERFACE",MAXLENGTH 43)
-//		-> ToDump("input_eth0.dump", ENCAP ETHER, SNAPLEN 102)
+		//-> Print("From device $WLANINTERFACE")
+		-> ToDump("input_wlan.dump", ENCAP ETHER, SNAPLEN 0)
 		-> ftx::FilterTX;
 	ftx[0]
 		-> hostfilter :: HostEtherFilter($myaddr_ethernet, DROP_OWN false, DROP_OTHER true);
-//		-> hostfilter :: HostEtherFilter(64:05:04:03:02:01, DROP_OWN false, DROP_OTHER true);
 	hostfilter[0]
-//		-> ToDump("eth0_in_0.dump", ENCAP ETHER, SNAPLEN 102)
+		-> ToDump("wlan_in_0.dump", ENCAP ETHER, SNAPLEN 0)
 //		-> Print("pkt4me")
 		-> [0]output;
 	hostfilter[1]
-//		-> ToDump("eth0_in_1.dump", ENCAP ETHER, SNAPLEN 102)
+//		-> ToDump("wlan_in_1.dump", ENCAP ETHER, SNAPLEN 0)
 //		-> Print("not for me")
 		-> [1]output;
 	ftx[1]
@@ -97,7 +96,7 @@ elementclass System {
   	fromhost_cl[1]
 		// arp requests or replies go to output 0
 		// IP packets go to output 1
-//		-> ToDump("fromsystem.dump", ENCAP ETHER)
+		-> ToDump("fromsystem.dump", ENCAP ETHER, SNAPLEN 0)
 //		-> Print("FromHostfake0 n0")
 		-> Classifier(12/0800)
 		-> multicast_cl :: IPClassifier(dst 224.0.0.0/4, -);
@@ -105,7 +104,7 @@ elementclass System {
 //		-> Print("From multicast_cl0")
 		-> Discard;
 	multicast_cl[1]
-//		-> ToDump("fromsystem_ip.dump", ENCAP ETHER)
+		-> ToDump("fromsystem_ip.dump", ENCAP ETHER, SNAPLEN 0)
    		-> Strip(14)
 //		-> ToDump("my_ip.dump", ENCAP IP, SNAPLEN 52)
 		-> CheckIPHeader
@@ -253,7 +252,7 @@ lookup[0] // known destination, dest IP annotation set
 	-> StripToNetworkHeader
 //	-> SetIPChecksum
 //	-> SetUDPChecksum
-//	-> ToDump("lookedup_to_ipout.dump",ENCAP IP)
+	-> ToDump("lookok.dump",ENCAP IP, SNAPLEN 0)
 //	-> Print("Lookup 0",TIMESTAMP true)
 	-> DecIPTTL
 //	-> ToDump("decipttl.dump",ENCAP IP)
@@ -269,7 +268,7 @@ ipopt[1]
 
 lookup[1] // unknown destination, routediscovery
 	//-> discoveryqueue;
-//	-> ToDump("lookfailed.dump",ENCAP IP, SNAPLEN 52)
+	-> ToDump("lookfailed.dump",ENCAP IP, SNAPLEN 0)
 //	-> Print("Lookup 1",TIMESTAMP true)
 	-> Discard;
 
@@ -288,7 +287,7 @@ lookup[3] // discarded packet
 sink[0]
 //	-> SetIPChecksum
 //	-> SetUDPChecksum
-//	-> ToDump("sinked.dump",ENCAP IP, SNAPLEN 52)
+	-> ToDump("sinked.dump",ENCAP IP, SNAPLEN 0)
 //	-> Print("Sinked",TIMESTAMP true)
 //	-> Discard;
 	-> sinkflowmon
@@ -296,6 +295,6 @@ sink[0]
 
 /// unsuccesful sink
 sink[1]
-//	-> ToDump("sinked_failed.dump", ENCAP IP)
+	-> ToDump("sinked_failed.dump", ENCAP IP, SNAPLEN 0)
 	-> Discard;
 	
