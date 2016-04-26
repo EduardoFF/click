@@ -2,7 +2,7 @@
 AddressInfo(me0	${ETHIP} ${ETHMAC});
 AddressInfo(me1	192.168.168.2/24 00:00:00:00:00:00);
 AddressInfo(adhocnet ${ADHOCIP} ${WLANMAC});
-
+AddressInfo(multicast 224.0.0.0/4 00:00:00:00:00:00)
 
 ///NOTES: rnp elements must be compiled with RNP_BROADCAST 0
 ///       and RNP_BIDIRECTIONAL 1
@@ -269,6 +269,7 @@ inputEth :: InputEth0(me0);
 outputEth :: OutputEth0;
 filterlocalhostEth :: FilterLocalhost(me0);
 filterlocalnetEth :: FilterLocalnet(adhocnet); // only packets to local subnet passthrough
+filtermulticastEth :: FilterLocalnet(multicast); // only multicast packets passthrough
 //ar :: ARPResponder(me0);
 arpquerierEth :: ARPQuerier(me0,POLL_TIMEOUT 0);	// We do not want polling here...
 arpclassEth :: ClassifyARP(me0,me0:eth);
@@ -355,6 +356,20 @@ inputEth[3]
 filterlocalhostEth[0]
 	-> StripToNetworkHeader
 	-> system;
+
+// check multicast first
+filterlocalhostEth[1]
+	-> filtermulticastEth;
+
+/// multicast packets
+filtermulticastEth[0]
+	-> StripToNetworkHeader
+        -> ToDump("multicast_eth0.dump", ENCAP IP, SNAPLEN 48)
+	-> system;
+
+/// IP packets destined to other nodes - bridged
+filtermulticastEth[1]
+	-> filterlocalnetEth;
 
 /// IP packets destined to other nodes - bridged
 filterlocalhostEth[1]
