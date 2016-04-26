@@ -179,7 +179,10 @@ class LcmHandler
 		    m_rnp->addRTEntry("*", re.node.c_str(), re.weight);
 		  }
 		else
-		  m_rnp->addRTEntry(re.dest.c_str(), re.node.c_str(), re.weight);
+		  {
+		    click_chatter("dest %s %s %d\n", re.dest.c_str(), re.node.c_str(), re.weight);		    
+		    m_rnp->addRTEntry(re.dest.c_str(), re.node.c_str(), re.weight);
+		  }
 	      }
 	  }
 	  /// at the end, call init to initialize the RT
