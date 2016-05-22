@@ -63,7 +63,7 @@ elementclass OutputEth0 {
 //      set SNIFFER False to prevent linux from handling broadcasts
 elementclass InputEth0 {
 	$myaddr_ethernet |
-	FromDevice($WLANINTERFACE, PROMISC true, SNIFFER false, METHOD LINUX)
+	FromDevice($WLANINTERFACE, PROMISC false, SNIFFER false, METHOD LINUX)
 //		//-> Print("From device $WLANINTERFACE",MAXLENGTH 43)
 //		-> ToDump("input_eth0.dump", ENCAP ETHER, SNAPLEN 102)
 		-> ftx::FilterTX;
