@@ -27,6 +27,6 @@ stamp-h
 
 userlevel/*.cc
 userlevel/*.mk
-userlevel/RNP_*clic
-
+userlevel/RNP_*click
+userlevel/RNP_PKGclick
 *.dump
