@@ -241,7 +241,7 @@ system[0]
 lookup[0] // known destination, dest IP annotation set
 	// just in case, strip network header
 	-> StripToNetworkHeader
-	-> ToDump("look-ok.dump",ENCAP IP, ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
+	-> ToDump("look-ok.dump",ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
 	-> DecIPTTL
 	-> ipopt;
 
