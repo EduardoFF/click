@@ -56,6 +56,9 @@ ToDump::configure(Vector<String> &conf, ErrorHandler *errh)
     _snaplen = 2000;
     _extra_length = true;
     _unbuffered = false;
+    _enabled = false;
+    _activation_level = 1;
+    _debug_level = 0;
     _nano = Timestamp::subsec_per_sec == Timestamp::nsec_per_sec;
 #if HAVE_PCAP && !defined(PCAP_TSTAMP_PRECISION_NANO)
     _nano = false;
@@ -72,12 +75,16 @@ ToDump::configure(Vector<String> &conf, ErrorHandler *errh)
 	.read("EXTRA_LENGTH", _extra_length)
 	.read("UNBUFFERED", _unbuffered)
         .read("NANO", _nano)
+	.read("ACTIVATION_LEVEL", _activation_level)
+	.read("DEBUG_LEVEL", _debug_level)
 #if CLICK_NS
 	.read("PER_NODE", per_node)
 #endif
 	.complete() < 0)
 	return -1;
 
+    _enabled = (_activation_level <= _debug_level);
+	
     if (_snaplen == 0)
 	_snaplen = 0xFFFFFFFFU;
 
@@ -151,7 +158,7 @@ ToDump::initialize(ErrorHandler *errh)
     }
 
     // skip initialization if we're hotswapping later
-    if (!hotswap_element()) {
+    if (!hotswap_element() && _enabled) {
 
 	// prepare files
 	assert(!_fp);
@@ -216,6 +223,10 @@ ToDump::write_packet(Packet *p)
     struct fake_pcap_pkthdr ph;
 
     Timestamp ts = p->timestamp_anno();
+
+    if( !_enabled )
+	return;
+    
     if (!ts)
         ts = Timestamp::now();
     ph.ts.tv.tv_sec = ts.sec();

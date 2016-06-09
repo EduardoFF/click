@@ -36,7 +36,6 @@ elementclass ClassifyARP {
 		-> MarkMACHeader
 		-> CheckIPHeader2(OFFSET 14)
 		-> MarkIPHeader(14)
-		//-> ToDump("ipdata",PER_NODE true)
 		-> [1]output;
 }
 
@@ -49,7 +48,7 @@ elementclass OutputEth0 {
     -> q :: Queue(100)
     /// write headers  (extended ip_header -> 56 bytes)
     /// ethernet 14 + 56 (IP) + 8 (UDP) + 24 first bytes of data 
-//    -> ToDump("out_eth0.dump", ENCAP ETHER, SNAPLEN 102)
+    -> ToDump("wlan-out.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
     -> ToDevice($WLANINTERFACE, METHOD LINUX);
 }
 
@@ -65,22 +64,19 @@ elementclass InputEth0 {
 	$myaddr_ethernet |
 	FromDevice($WLANINTERFACE, PROMISC false, SNIFFER false, METHOD LINUX)
 //		//-> Print("From device $WLANINTERFACE",MAXLENGTH 43)
-//		-> ToDump("input_eth0.dump", ENCAP ETHER, SNAPLEN 102)
+		-> ToDump("wlan-in.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 		-> ftx::FilterTX;
 	ftx[0]
 		-> hostfilter :: HostEtherFilter($myaddr_ethernet, DROP_OWN false, DROP_OTHER true);
 //		-> hostfilter :: HostEtherFilter(64:05:04:03:02:01, DROP_OWN false, DROP_OTHER true);
 	hostfilter[0]
-//		-> ToDump("eth0_in_0.dump", ENCAP ETHER, SNAPLEN 102)
-//		-> Print("pkt4me")
+		-> ToDump("wlan-in_0.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG)
 		-> [0]output;
 	hostfilter[1]
-//		-> ToDump("eth0_in_1.dump", ENCAP ETHER, SNAPLEN 102)
-//		-> Print("not for me")
+		-> ToDump("wlan-in_1.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG)
 		-> [1]output;
 	ftx[1]
 		-> ExtraDecap	
-		//-> Print("TX FEEDBACK device $WLANINTERFACE")
 		-> [2]output;
 }
 
@@ -97,32 +93,26 @@ elementclass System {
   	fromhost_cl[1]
 		// arp requests or replies go to output 0
 		// IP packets go to output 1
-//		-> ToDump("fromsystem.dump", ENCAP ETHER)
-//		-> Print("FromHostfake0 n0")
+		-> ToDump("system-in.dump", ENCAP ETHER, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 		-> Classifier(12/0800)
 		-> multicast_cl :: IPClassifier(dst 224.0.0.0/4, -);
 	multicast_cl[0]
-//		-> Print("From multicast_cl0")
+		-> ToDump("system-in_mcast_discarded.dump", ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)	
 		-> Discard;
 	multicast_cl[1]
-//		-> ToDump("fromsystem_ip.dump", ENCAP ETHER)
+		-> ToDump("system-in_ip.dump", ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
    		-> Strip(14)
-//		-> ToDump("my_ip.dump", ENCAP IP, SNAPLEN 52)
 		-> CheckIPHeader
 		-> MarkIPHeader
 		-> [0]output;
 		
 	input[0]
-//		-> Print("Packet to local host, going further")
 		-> CheckIPHeader2
-//		-> ToDump("systemout_ipok.dump", ENCAP IP)
-//		-> IPPrint()
+		-> ToDump("system-tohost_ipok.dump", ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 		-> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) // ensure ethernet for kernel
-//		-> ToDump("systemout_ethernetpacked.dump", ENCAP ETHER)
 		-> MarkIPHeader(14)
-//		-> ToDump("systemout_ethernetpacked_ipmarked.dump", ENCAP ETHER)
 		-> CheckIPHeader(14)
-//		-> ToDump("systemout_tohost.dump", ENCAP ETHER)
+		-> ToDump("system-tohost.dump", ENCAP ETHER, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 		-> tohost;
 }
 
@@ -196,7 +186,8 @@ inputEthSim[0]
 
 
 /// ARP replies
-arpclass[0] 
+arpclass[0]
+	-> ToDump("arp-replies.dump",ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG)
 	-> output;
 
 /// NO ARP
@@ -217,20 +208,19 @@ arpclass[2]
 
 // Packets with known MAC address of the destination
 arpquerier[0]
-	//-> ToDump("arpoutput.dump",PER_NODE true)
+	-> ToDump("arp-output.dump", ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG)
 	-> oflowmon
 	-> output;
 
 // ARP Queries
 arpquerier[1]
-	//-> ToDump("arpoutput.dump",PER_NODE true)
+	-> ToDump("arp-queries.dump", ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG)
 	-> output;
 
 /// ethernet packets from network not for this node
 /// discard
 inputEthSim[1]
-//	-> Print("Not mine")
-//	-> ToDump("unicast_ignored.dump", ENCAP ETHER)
+	-> ToDump("wlan-discarded.dump", ENCAP ETHER, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 	-> Discard;
 
 /// TX feedbacks are not handled at the moment
@@ -243,7 +233,7 @@ inputEthSim[2]
 
 system[0] 
 	-> Paint(2)
-//	-> ToDump("beforelook_mine.dump", ENCAP IP)
+	-> ToDump("system-tolook.dump", ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 	-> TcpOrUdp
 	-> appflowmon		
 	-> lookup;
@@ -251,12 +241,8 @@ system[0]
 lookup[0] // known destination, dest IP annotation set
 	// just in case, strip network header
 	-> StripToNetworkHeader
-//	-> SetIPChecksum
-//	-> SetUDPChecksum
-//	-> ToDump("lookedup_to_ipout.dump",ENCAP IP)
-//	-> Print("Lookup 0",TIMESTAMP true)
+	-> ToDump("look-ok.dump",ENCAP IP, ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG)
 	-> DecIPTTL
-//	-> ToDump("decipttl.dump",ENCAP IP)
 	-> ipopt;
 
 /// packets going out
@@ -264,38 +250,33 @@ ipopt[0]
 	-> arpquerier;
 
 ipopt[1]
-//	-> ToDump("ipgwopt_ERROR.dump",ENCAP IP)
+	-> ToDump("ipgwopt-discarded.dump",ENCAP IP, ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG)
 	-> Discard;
 
 lookup[1] // unknown destination, routediscovery
 	//-> discoveryqueue;
-//	-> ToDump("lookfailed.dump",ENCAP IP, SNAPLEN 52)
-//	-> Print("Lookup 1",TIMESTAMP true)
+	-> ToDump("look-failed.dump",ENCAP IP, SNAPLEN 52, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 	-> Discard;
 
 lookup[2] // im sink, receive
 	-> StripToNetworkHeader
 //	-> StoreIPAddress(me0,dst)
-//	-> ToDump("before_sink.dump",ENCAP IP)
+	-> ToDump("look-sink.dump",ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 	-> sink;
 
 lookup[3] // discarded packet
-//	-> ToDump("discarded.dump", ENCAP IP, SNAPLEN 52)
+	-> ToDump("look-discarded.dump", ENCAP IP, SNAPLEN 52, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 	-> Discard;
 
 
 /// succesful sinks
 sink[0]
-//	-> SetIPChecksum
-//	-> SetUDPChecksum
-//	-> ToDump("sinked.dump",ENCAP IP, SNAPLEN 52)
-//	-> Print("Sinked",TIMESTAMP true)
-//	-> Discard;
+	-> ToDump("sink-ok.dump",ENCAP IP, SNAPLEN 52)
 	-> sinkflowmon
 	-> system;
 
 /// unsuccesful sink
 sink[1]
-//	-> ToDump("sinked_failed.dump", ENCAP IP)
+	-> ToDump("sink-failed.dump", ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG)
 	-> Discard;
 	

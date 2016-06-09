@@ -127,6 +127,9 @@ class ToDump : public Element { public:
     bool _extra_length;
     bool _unbuffered;
     bool _nano;
+    unsigned _activation_level;
+    unsigned _debug_level;
+    bool _enabled;
 
 #if HAVE_INT64_TYPES
     typedef uint64_t counter_t;
