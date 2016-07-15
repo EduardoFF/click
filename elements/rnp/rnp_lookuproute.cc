@@ -168,8 +168,16 @@ class LcmHandler
 	      }
 	    else if( strcmp(re.node.c_str(), "DUMP") == 0)
 	      {
-		click_chatter("DUMP FOR NODE %s w %d", myIP.c_str(), re.weight);
-		m_rnp->addRTEntry(re.dest.c_str(), "0.0.0.0", re.weight);
+		if( strcmp(re.dest.c_str(), "SINK") == 0)
+		  {
+		    click_chatter("DUMP FOR SINK %s w %d", myIP.c_str(), re.weight);
+		    m_rnp->addRTEntry("*", "0.0.0.0", re.weight);		    
+		  }
+		else
+		  {
+		    click_chatter("DUMP FOR NODE %s w %d", myIP.c_str(), re.weight);
+		    m_rnp->addRTEntry(re.dest.c_str(), "0.0.0.0", re.weight);
+		  }
 	      }
 	    else 
 	      {
