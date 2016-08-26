@@ -208,7 +208,7 @@ arpclass[2]
 
 // Packets with known MAC address of the destination
 arpquerier[0]
-	-> ToDump("arp-output.dump", ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
+	-> ToDump("arp-ok-output.dump", ACTIVATION_LEVEL 2, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
 	-> oflowmon
 	-> output;
 
