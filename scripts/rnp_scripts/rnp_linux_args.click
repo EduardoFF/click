@@ -45,7 +45,7 @@ elementclass ClassifyARP {
 /// we get IP packets, and encapsulate in broadcast ethernet
 elementclass OutputEth0 {
   input[0]
-    -> q :: Queue(50)
+    -> q :: Queue($QSIZE)
     /// write headers  (extended ip_header -> 56 bytes)
     /// ethernet 14 + 56 (IP) + 8 (UDP) + 24 first bytes of data 
     -> ToDump("wlan-out.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
