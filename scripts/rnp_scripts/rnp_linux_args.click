@@ -47,7 +47,8 @@ elementclass OutputEth0 {
   input[0]
     -> q :: Queue($QSIZE)
     /// write headers  (extended ip_header -> 56 bytes)
-    /// ethernet 14 + 56 (IP) + 8 (UDP) + 24 first bytes of data 
+    /// ethernet 14 + 56 (IP) + 8 (UDP) + 24 first bytes of data
+    -> SetTimestamp
     -> ToDump("wlan-out.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
     -> ToDevice($WLANINTERFACE, METHOD LINUX);
 }
@@ -93,6 +94,7 @@ elementclass System {
   	fromhost_cl[1]
 		// arp requests or replies go to output 0
 		// IP packets go to output 1
+		-> SetTimestamp		
 		-> ToDump("system-in.dump", ENCAP ETHER, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
 		-> Classifier(12/0800)
 		-> multicast_cl :: IPClassifier(dst 224.0.0.0/4, -);
@@ -192,7 +194,7 @@ arpclass[0]
 
 /// NO ARP
 arpclass[1]
-	-> SetTimestamp
+//	-> SetTimestamp
 	-> Classifier(12/0800)
 	-> MarkMACHeader
 	-> CheckIPHeader2(14)
@@ -241,6 +243,7 @@ system[0]
 lookup[0] // known destination, dest IP annotation set
 	// just in case, strip network header
 	-> StripToNetworkHeader
+	-> SetTimestamp
 	-> ToDump("look-ok.dump",ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
 	-> DecIPTTL
 	-> ipopt;
