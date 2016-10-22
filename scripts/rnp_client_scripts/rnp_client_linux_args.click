@@ -20,7 +20,7 @@ AddressInfo(multicast 224.0.0.0/4 00:00:00:00:00:00)
 /// we get IP packets, and encapsulate in broadcast ethernet
 elementclass OutputWlan1 {
   input[0]
-    -> q :: Queue($QSIZE)
+    -> q :: FrontDropQueue($QSIZE)
     /// write headers  (extended ip_header -> 56 bytes)
     /// ethernet 14 + 20 (IP) + 8 (UDP)
     -> ToDump("wlan-out.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
@@ -64,7 +64,7 @@ elementclass InputWlan1 {
 /// packets going out from click node to the network
 elementclass OutputEth0 {
   input[0]
-    -> q :: Queue($QSIZE)
+    -> q :: FrontDropQueue($QSIZE)
     -> ToDump("eth-out.dump", ENCAP ETHER, SNAPLEN 102, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
     -> ToDevice(${ETHINTERFACE}, METHOD LINUX);
 }
@@ -377,12 +377,11 @@ filterlocalnetEth[1]
 
 /// system stuff received here is already addressed to adhocnet
 /// only need to filter out tcp/udp and send to route
-system[0] 
+system[0]
+	-> ToDump("local_ip.dump", ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)	
 	-> Paint(2)
-	-> StripToNetworkHeader
 	-> TcpOrUdp
-	-> appflowmon
-	-> ToDump("local_to_adhoc.dump", ENCAP ETHER, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
+	-> ToDump("local_to_adhoc.dump", ENCAP IP, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
 	-> lookup;
 	
 
