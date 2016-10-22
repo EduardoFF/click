@@ -212,7 +212,7 @@ elementclass FilterLocalnet {
 //
 elementclass System {
 	tohost :: ToHost(fake0);
-	FromHost(fake0, me0, ETHER 2:2:2:2:2:2)
+	FromHost(fake0, adhocnet, ETHER 2:2:2:2:2:2)
 		-> fromhost_cl :: Classifier(12/0806, 12/0800);
   	fromhost_cl[0] -> ARPResponder(0.0.0.0/0 1-1-1-1-1-1) -> tohost;
   	fromhost_cl[1]
@@ -375,11 +375,15 @@ filterlocalnetEth[1]
 	-> ToDump("bridged_from_eth0_nonet.dump", ENCAP ETHER, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
 	-> Discard;
 
-/// system stuff goes to eth
+/// system stuff received here is already addressed to adhocnet
+/// only need to filter out tcp/udp and send to route
 system[0] 
 	-> Paint(2)
 	-> StripToNetworkHeader
-	-> outputEth;
+	-> TcpOrUdp
+	-> appflowmon
+	-> ToDump("local_to_adhoc.dump", ENCAP ETHER, ACTIVATION_LEVEL 1, DEBUG_LEVEL $DEBUG, UNBUFFERED $UNBUF)
+	-> lookup;
 	
 
 
